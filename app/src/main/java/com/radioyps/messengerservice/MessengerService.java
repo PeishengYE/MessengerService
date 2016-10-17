@@ -186,6 +186,8 @@ public class MessengerService extends Service {
 
     /* you cannot access the mHandler in a other process,
     * it always give null pointer
+    *
+    * FIXME this is a dummy code, it show here just to say this is not a good way
     * */
     private void sendMessage(int messageFlag, String mesg){
         Log.i(TAG, "sendMessage()>>" + mesg );
@@ -195,5 +197,7 @@ public class MessengerService extends Service {
         Message.obtain(MainActivity.mHandler, messageFlag, mesg).sendToTarget();
         }
     }
+
+
 }
 //END_INCLUDE(service)
