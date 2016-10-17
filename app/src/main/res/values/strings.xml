@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">MessengerService</string>
+    <string name="remote_service_started">Remote service started</string>
+    <string name="remote_service_stopped">Remote service stopped</string>
+    <string name="local_service_label">Local service lable</string>
+
+</resources>
