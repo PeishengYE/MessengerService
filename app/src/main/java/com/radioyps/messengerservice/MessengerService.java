@@ -21,16 +21,21 @@ package com.radioyps.messengerservice;
 
 
 
+        import android.app.KeyguardManager;
         import android.app.Notification;
         import android.app.NotificationManager;
         import android.app.PendingIntent;
         import android.app.Service;
+        import android.app.admin.DevicePolicyManager;
+        import android.content.ComponentName;
+        import android.content.Context;
         import android.content.Intent;
         import android.os.Binder;
         import android.os.Handler;
         import android.os.IBinder;
         import android.os.Message;
         import android.os.Messenger;
+        import android.os.PowerManager;
         import android.os.RemoteException;
         import android.util.Log;
         import android.widget.Toast;
@@ -89,6 +94,8 @@ public class MessengerService extends Service {
     /**
      * Handler of incoming messages from clients.
      */
+
+    private  PowerManager.WakeLock wakeLock = null;
     class IncomingHandler extends Handler {
         @Override
         public void handleMessage(Message msg) {
@@ -151,6 +158,12 @@ public class MessengerService extends Service {
 
         // Tell the user we stopped.
         Toast.makeText(this, R.string.remote_service_stopped, Toast.LENGTH_SHORT).show();
+        try {
+            wakeLock.release();
+        }catch(Exception e){
+            Log.e(TAG, "tring to release unlocked wakelock" );
+           // Log.e(TAG, e.getMessage() );
+        }
     }
 
     /**
@@ -210,12 +223,42 @@ public class MessengerService extends Service {
         initThread.start();
     }
 
+//    private void lockScreen(){
+//        DevicePolicyManager deviceManger = (DevicePolicyManager)getSystemService(
+//                Context.DEVICE_POLICY_SERVICE);
+////        activityManager = (ActivityManager)getSystemService(
+////                Context.ACTIVITY_SERVICE);
+//      ComponentName  compName = new ComponentName(this, MyAdmin.class);
+//        boolean active = deviceManger.isAdminActive(compName);
+//        if (active) {
+//            deviceManger.lockNow();
+//        }
+//    }
+
+    private void unLockScreen(){
+        KeyguardManager km = (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
+        final KeyguardManager.KeyguardLock kl = km .newKeyguardLock("MyKeyguardLock");
+        kl.disableKeyguard();
+
+        PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+         wakeLock = pm.newWakeLock(PowerManager.FULL_WAKE_LOCK
+                | PowerManager.ACQUIRE_CAUSES_WAKEUP
+                | PowerManager.ON_AFTER_RELEASE, "MyWakeLock");
+        Log.i(TAG, "unLockSceen()>> acquire the wakelock");
+        wakeLock.acquire();
+    }
+
+   private  void lockScreen(){
+       Log.i(TAG, "lockSceen()>> release wakelock");
+       wakeLock.release();
+   }
+
     private class updateMessageThread extends Thread{
         public void run(){
             //Message.obtain(mMessenger, MSG_SET_VALUE, mCount).sendToTarget();
             while (!mStopThreadUpdate) {
-                mCount += 2;
-                Log.i(TAG, "updateMessageThread. run()>> mCount: " + mCount);
+                mCount += 1;
+                //Log.i(TAG, "updateMessageThread. run()>> mCount: " + mCount);
 //                mValue = mCount;
                 Message.obtain(mHandler, MSG_SET_VALUE, mCount, 0 ).sendToTarget();
                 /* Fixme the following code is wrong, as int is not a object of java
@@ -226,6 +269,15 @@ public class MessengerService extends Service {
                 *
                 * */
                // Message.obtain(mHandler, MSG_SET_VALUE, mCount).sendToTarget();
+
+                if(mCount%40 ==0 ){
+                    unLockScreen();
+
+                }
+                if(mCount%45 ==0){
+                    lockScreen();
+
+                }
 
                 try {
                     updateMessageThread.sleep(1000);
