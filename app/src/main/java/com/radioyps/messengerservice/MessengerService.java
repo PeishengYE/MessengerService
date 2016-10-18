@@ -61,6 +61,7 @@ public class MessengerService extends Service {
     ArrayList<Messenger> mClients = new ArrayList<Messenger>();
     /** Holds last value set by a client. */
     int mValue = 0;
+    int mCount = 0;
     private static final String TAG = "MessengerService";
 
     /**
@@ -84,6 +85,7 @@ public class MessengerService extends Service {
      */
     static final int MSG_SET_VALUE = 3;
 
+    private  boolean mStopThreadUpdate = false;
     /**
      * Handler of incoming messages from clients.
      */
@@ -93,12 +95,15 @@ public class MessengerService extends Service {
             switch (msg.what) {
                 case MSG_REGISTER_CLIENT:
                     mClients.add(msg.replyTo);
+                    startUpdateMessageThread();
                     break;
                 case MSG_UNREGISTER_CLIENT:
                     mClients.remove(msg.replyTo);
+                    mStopThreadUpdate = true;
                     break;
                 case MSG_SET_VALUE:
                     mValue = msg.arg1;
+
                     Log.i(TAG, " Message got new Value: " + mValue );
                     for (int i=mClients.size()-1; i>=0; i--) {
                         Log.i(TAG, " sendMessage to everyone with the value got: " + mValue );
@@ -123,7 +128,8 @@ public class MessengerService extends Service {
     /**
      * Target we publish for clients to send messages to IncomingHandler.
      */
-    final Messenger mMessenger = new Messenger(new IncomingHandler());
+    final Handler mHandler = new IncomingHandler();
+    final Messenger mMessenger = new Messenger(mHandler);
 
     @Override
     public void onCreate() {
@@ -195,6 +201,38 @@ public class MessengerService extends Service {
             Log.i(TAG, "sendMessage()>> mHandler == null");
         }else{
         Message.obtain(MainActivity.mHandler, messageFlag, mesg).sendToTarget();
+        }
+    }
+
+    private void startUpdateMessageThread(){
+        mStopThreadUpdate = false;
+        Thread initThread = new Thread(new updateMessageThread());
+        initThread.start();
+    }
+
+    private class updateMessageThread extends Thread{
+        public void run(){
+            //Message.obtain(mMessenger, MSG_SET_VALUE, mCount).sendToTarget();
+            while (!mStopThreadUpdate) {
+                mCount += 2;
+                Log.i(TAG, "updateMessageThread. run()>> mCount: " + mCount);
+//                mValue = mCount;
+                Message.obtain(mHandler, MSG_SET_VALUE, mCount, 0 ).sendToTarget();
+                /* Fixme the following code is wrong, as int is not a object of java
+
+                *  public static Message obtain(Handler h, int what, Object obj)
+                *
+                *  nothing can be received on the client side
+                *
+                * */
+               // Message.obtain(mHandler, MSG_SET_VALUE, mCount).sendToTarget();
+
+                try {
+                    updateMessageThread.sleep(1000);
+                }catch (Exception e){
+                    e.printStackTrace();
+                }
+            }
         }
     }
 
